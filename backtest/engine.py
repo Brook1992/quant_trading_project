@@ -45,7 +45,7 @@ def run_backtest(data: pd.DataFrame, initial_capital: float = 100000.0):
     print("Backtest simulation complete.")
 
     # --- Performance Metrics ---
-    total_return = (portfolio['total_value'][-1] / initial_capital) - 1
+    total_return = (portfolio['total_value'].iloc[-1] / initial_capital) - 1
     
     # Calculate Sharpe Ratio (assuming risk-free rate is 0)
     # Using a 252-day trading year
@@ -95,7 +95,7 @@ def run_backtest(data: pd.DataFrame, initial_capital: float = 100000.0):
 
     stats = {
         'initial_capital': initial_capital,
-        'final_portfolio_value': portfolio['total_value'][-1],
+        'final_portfolio_value': portfolio['total_value'].iloc[-1],
         'total_return_pct': total_return * 100,
         'annualized_return': annualized_return,
         'annualized_std_dev': annualized_std_dev,

@@ -11,7 +11,7 @@ mock_news = {
     '2019-11-20': "AAPL unveils groundbreaking new M-series chip to rave reviews.", # Positive
     '2020-09-01': "Analysts downgrade AAPL stock citing saturation in the smartphone market.", # Negative
     '2021-05-10': "AAPL announces 100 billion dollar stock buyback program.", # Positive
-    '2022-10-25': "Reports of production cuts for iPhone 14 surface amid demand fears.", # Negative
+    '2021-05-24': "Reports of production cuts for iPhone 14 surface amid demand fears.", # Negative
 }
 
 def generate_signals(data: pd.DataFrame, short_window: int, long_window: int) -> pd.DataFrame:

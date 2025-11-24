@@ -16,7 +16,7 @@ def get_sentiment(text: str) -> str:
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
         Analyze the sentiment of the following financial news headline.
@@ -28,7 +28,7 @@ def get_sentiment(text: str) -> str:
         
         # --- Logging the request ---
         log.info("--- Calling Gemini API ---")
-        log.info(f"Model: gemini-pro")
+        log.info(f"Model: gemini-flash-latest")
         log.info(f"Request Body (Prompt):\n{prompt}")
         
         response = model.generate_content(prompt)
