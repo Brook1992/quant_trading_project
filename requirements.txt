@@ -1,0 +1,9 @@
+pandas
+yfinance
+matplotlib
+numpy
+seaborn
+google-generativeai
+python-dotenv
+watchgod
+streamlit
