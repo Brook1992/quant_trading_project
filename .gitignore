@@ -1,0 +1,13 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# Reports and other generated output
+backtest_reports/
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env

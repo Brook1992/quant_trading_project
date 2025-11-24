@@ -38,7 +38,7 @@ def plot_results(portfolio: 'pd.DataFrame', signals: 'pd.DataFrame', ticker: str
         title_font = FontProperties(fname=font_path, size=18)
     except FileNotFoundError: # 如果在 try 块中发生 FileNotFoundError (文件未找到)异常
         # 打印一个警告信息到控制台
-        print("警告: 未能在 C:/Windows/Fonts/ 中找到 SimHei.ttf 字体。中文可能无法正确显示。")
+        print("Warning: SimHei.ttf font not found in C:/Windows/Fonts/. Chinese characters may not display correctly.")
         # 如果找不到指定的字体, 则回退到默认字体, 这可能导致中文显示为方框
         chinese_font = FontProperties(size=12)
         title_font = FontProperties(size=18)
@@ -143,14 +143,14 @@ def main():
     # 调用我们从 strategies.sma_crossover 模块导入的 generate_signals 函数
     # 第一个参数是上一步获取的股票数据, 后面的参数是均线窗口配置
     signals_data = generate_signals(stock_data, short_window=SHORT_WINDOW, long_window=LONG_WINDOW)
-    print(f"信号已生成, 数据行数: {len(signals_data)}") # 调试信息
+    print(f"Signals generated, data rows: {len(signals_data)}") # Debug info
 
     # 3. 运行回测
     # 调用我们从 backtest.engine 模块导入的 run_backtest 函数
     # 它会返回两个结果: portfolio (记录每日资金状况) 和 stats (最终的统计数据)
     # Python函数可以返回多个值, 通常以元组(tuple)的形式
     portfolio, stats = run_backtest(signals_data, initial_capital=INITIAL_CAPITAL)
-    print(f"回测已完成, 投资组合数据行数: {len(portfolio)}") # 调试信息
+    print(f"Backtest completed, portfolio data rows: {len(portfolio)}") # Debug info
 
     # --- 输出结果 ---
     # 打印最终的性能统计数据
@@ -167,7 +167,6 @@ def main():
     # 4. 绘制结果图表
     # 在脚本作为普通python脚本运行时, 这几行会打印提示信息并显示图表
     print("\nDisplaying plot window. Please close the plot window to exit the program.")
-    print("正在显示图表窗口。请关闭图表窗口以退出程序。")
     
     # 调用本文件中定义的 plot_results 函数, 获取图表对象
     fig = plot_results(portfolio, signals_data, TICKER)
