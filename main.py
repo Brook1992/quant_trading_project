@@ -21,7 +21,7 @@ from backtest.engine import run_backtest
 # def 是 Python 中定义函数的关键字
 # portfolio: 'pd.DataFrame' 是类型提示(type hint), 表示 portfolio 参数期望是 pandas DataFrame 类型。这对代码可读性有好处, 但Python解释器本身不强制要求。
 # 这类似于 TypeScript 中的 `function plot_results(portfolio: pd.DataFrame, ...)`
-def plot_results(portfolio: 'pd.DataFrame', signals: 'pd.DataFrame', ticker: str):
+def plot_results(portfolio: 'pd.DataFrame', signals: 'pd.DataFrame', ticker: str, company_name: str = None):
     """
     这是一个函数文档字符串(docstring), 用来解释函数的作用。
     功能: 绘制回测结果图表, 标签同时支持中英文。
@@ -60,7 +60,13 @@ def plot_results(portfolio: 'pd.DataFrame', signals: 'pd.DataFrame', ticker: str
     # 为整个图表设置主标题
     # f'...' 是Python的f-string格式化字符串, 类似于JavaScript的模板字符串 `${}`
     # fontproperties=title_font 应用我们之前定义的大号中文字体
-    fig.suptitle(f'SMA Crossover Backtest Results for {ticker} / {ticker} SMA交叉策略回测结果', fontproperties=title_font)
+    
+    # If company_name is provided, use it in the title. Otherwise, use the old title format.
+    if company_name:
+        chart_title = f'SMA Crossover Backtest for {company_name} ({ticker})\n{company_name} ({ticker}) SMA交叉策略回测结果'
+    else:
+        chart_title = f'SMA Crossover Backtest Results for {ticker} / {ticker} SMA交叉策略回测结果'
+    fig.suptitle(chart_title, fontproperties=title_font)
 
     # --- 第一个子图 (ax1): 绘制股价, 均线和买卖信号 ---
     # ax1.plot(...) 是在第一个子图上绘线
@@ -131,12 +137,12 @@ def main():
     # 1. 获取数据
     # 调用我们从 data.fetcher 模块导入的 fetch_data 函数
     # 将上面定义的配置参数作为函数的实际参数传入
-    stock_data = fetch_data(TICKER, START_DATE, END_DATE)
+    stock_data, company_name = fetch_data(TICKER, START_DATE, END_DATE)
 
     # 检查返回的数据是否为空。在Python中, pandas的DataFrame有一个 .empty 属性
     if stock_data.empty:
         # 如果数据为空, 打印错误信息并用 return 提前结束 main 函数
-        print("Could not retrieve data. Exiting.")
+        print(f"Could not retrieve data for {TICKER}. Exiting.")
         return
 
     # 2. 生成信号
@@ -154,7 +160,7 @@ def main():
 
     # --- 输出结果 ---
     # 打印最终的性能统计数据
-    print("\n--- Backtest Performance ---")
+    print(f"\n--- Backtest Performance for {company_name} ({TICKER}) ---")
     # 遍历(loop over) stats 字典中的每一个键值对
     # .items() 方法类似于 Java中 Map的 entrySet()
     for key, value in stats.items():
@@ -169,7 +175,7 @@ def main():
     print("\nDisplaying plot window. Please close the plot window to exit the program.")
     
     # 调用本文件中定义的 plot_results 函数, 获取图表对象
-    fig = plot_results(portfolio, signals_data, TICKER)
+    fig = plot_results(portfolio, signals_data, TICKER, company_name)
     # plt.show() 会暂停程序, 并弹出一个窗口显示上面创建的所有图表
     plt.show() # 当直接运行 main.py 时, 显示图表
 
