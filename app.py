@@ -4,135 +4,14 @@ from datetime import date, datetime # 导入日期和时间处理模块
 import os               # 导入 OS 模块, 用于操作系统交互, 如文件路径操作
 import io               # 导入 IO 模块, 用于处理流数据, 如将图表保存到内存
 import base64           # 导入 base64 模块, 用于编码/解码数据, 以便在HTML中嵌入图片
+import json             # 导入 json 模块, 用于将字典转换为JSON字符串
 
 # Import project modules (导入项目内部模块)
 from data.fetcher import fetch_data                 # 从 data.fetcher 导入 fetch_data 函数, 用于获取股票数据
+from data.database import save_report_to_db         # 从 data.database 导入 save_report_to_db 函数
 from strategies.sma_crossover import generate_signals # 从 strategies.sma_crossover 导入 generate_signals 函数, 用于生成交易信号
 from backtest.engine import run_backtest             # 从 backtest.engine 导入 run_backtest 函数, 用于执行回测引擎
 from main import plot_results                       # 从 main 导入 plot_results 函数, 复用其绘图功能
-
-# --- Utility Function to Save Report (保存报告的工具函数) ---
-def save_report_to_html(stats: dict, fig, ticker: str, company_name: str) -> str:
-    """
-    功能: 将回测结果保存为特定股票的HTML报告文件。
-    如果文件已存在, 新结果会预置(prepend)到文件主体顶部, 以显示最新的回测结果。
-    参数:
-        stats (dict): 回测统计数据字典。
-        fig: Matplotlib 图表对象。
-        ticker (str): 股票代码。
-        company_name (str): 公司名称。
-    返回:
-        str: 保存的HTML文件路径。
-    """
-    report_dir = "backtest_reports" # 定义报告存储目录
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir) # 如果目录不存在, 则创建它
-
-    # Filename is now just the ticker (报告文件名以股票代码命名)
-    filepath = os.path.join(report_dir, f"{ticker}.html") # 构造完整的报告文件路径
-    
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # 获取当前时间戳
-
-    # 1. --- Create the HTML for the new entry (为新报告条目创建HTML内容) ---
-    # Convert plot to a base64 string (将Matplotlib图表转换为Base64编码字符串, 以便嵌入到HTML中)
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight') # 将图表保存到内存缓冲区(buffer)为PNG格式
-    img_str = base64.b64encode(buf.getvalue()).decode() # 将缓冲区内容编码为base64字符串
-    img_html = f'<img src="data:image/png;base64,{img_str}" alt="Backtest Chart" style="width:100%;">' # 构建图片HTML标签
-
-    # Format stats into an HTML table for the collapsible content (将统计数据格式化为HTML表格, 用于可折叠内容)
-    stats_html = "<table><tr><th>Metric</th><th>Value</th></tr>" # 表格头部
-    stats_map = { # 定义统计指标的中英文对照及格式
-        "最终资产 (Final Portfolio Value)": f"${stats['final_portfolio_value']:,.2f}",
-        "总收益率 (Total Return)": f"{stats['total_return_pct']:.2f}%",
-        "夏普比率 (Sharpe Ratio)": f"{stats['sharpe_ratio']:.2f}",
-        "最大回撤 (Max Drawdown)": f"{stats['max_drawdown_pct']:.2f}%",
-        "总交易次数 (Total Trades)": f"{stats['total_trades']}",
-        "胜率 (Win Rate)": f"{stats['win_rate_pct']:.2f}%",
-        "盈亏比 (Profit/Loss Ratio)": f"{stats['profit_loss_ratio']:.2f}"
-    }
-    for key, value in stats_map.items():
-        stats_html += f"<tr><td>{key}</td><td>{value}</td></tr>" # 遍历并添加表格行
-    stats_html += "</table>" # 表格尾部
-    
-    # Create the enhanced summary with key metrics (创建包含关键指标的增强摘要)
-    summary_kpis = f"""
-    <div class="summary-grid">
-        <span class="summary-time"><strong>Run at:</strong> {timestamp}</span>
-        <span class="summary-item"><strong>Return:</strong> {stats['total_return_pct']:.2f}%</span>
-        <span class="summary-item"><strong>Sharpe:</strong> {stats['sharpe_ratio']:.2f}</span>
-        <span class="summary-item"><strong>Drawdown:</strong> {stats['max_drawdown_pct']:.2f}%</span>
-        <span class="summary-item"><strong>Win Rate:</strong> {stats['win_rate_pct']:.2f}%</span>
-    </div>
-    """
-
-    # Create the collapsible HTML block for this specific backtest run (为本次回测运行创建可折叠的HTML块)
-    new_entry_html = f"""
-    <details>
-        <summary>{summary_kpis}</summary>
-        <div class="content">
-            <h3>Performance Metrics (性能指标)</h3>
-            {stats_html}
-            <h3>Equity Curve & Trades (净值曲线与交易)</h3>
-            {img_html}
-        </div>
-    </details>
-    """
-
-    # 2. --- Read existing file or create a new one (读取现有文件或创建新文件) ---
-    if os.path.exists(filepath): # 检查报告文件是否已存在
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read() # 读取现有文件内容
-        
-        # Insert the new entry right after the main header (在新报告头部后插入新条目)
-        insertion_point_v1 = f"<h1>Backtest Report for {ticker} (回测报告)</h1>"
-        insertion_point_v2 = f"<h1>Backtest Report for {company_name} ({ticker})</h1>"
-        
-        # Handle both old and new header formats for backward compatibility
-        if insertion_point_v2 in content:
-             new_content = content.replace(insertion_point_v2, f"{insertion_point_v2}\n{new_entry_html}")
-        else:
-             new_content = content.replace(insertion_point_v1, f"<h1>Backtest Report for {company_name} ({ticker})</h1>\n{new_entry_html}")
-    else:
-        # Create the HTML file from scratch (从头开始创建HTML文件)
-        new_content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backtest Report for {company_name} ({ticker})</title>
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 40px; background-color: #f9f9f9; }}
-        h1 {{ color: #1a1a1a; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
-        details {{ border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }}
-        summary {{ background-color: #f7f7f7; padding: 12px 16px; cursor: pointer; font-weight: bold; outline: none; }}
-        summary:hover {{ background-color: #efefef; }}
-        details[open] summary {{ border-bottom: 1px solid #ddd; }}
-        .content {{ padding: 16px; background-color: #fff; }}
-        h3 {{ color: #333; margin-top: 0; }}
-        table {{ border-collapse: collapse; width: 60%; margin-bottom: 20px; }}
-        th, td {{ border: 1px solid #e0e0e0; padding: 10px; text-align: left; }}
-        th {{ background-color: #f2f2f2; font-weight: 600; }}
-        img {{ max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-        .summary-grid {{ display: flex; justify-content: space-between; align-items: center; width: 100%; }}
-        .summary-time {{ flex-grow: 1; }}
-        .summary-item {{ margin-left: 20px; font-size: 0.9em; color: #555; }}
-        .summary-item strong {{ color: #000; }}
-    </style>
-</head>
-<body>
-    <h1>Backtest Report for {company_name} ({ticker})</h1>
-    {new_entry_html}
-</body>
-</html>
-        """
-
-    # 3. --- Write the final content back to the file (将最终内容写回文件) ---
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(new_content) # 写入(覆盖)更新后的HTML内容
-    
-    return filepath # 返回生成的报告文件路径
 
 # --- Page Configuration (页面配置) ---
 st.set_page_config(
@@ -194,6 +73,13 @@ initial_capital = st.sidebar.number_input(
     min_value=1000, max_value=10000000, value=100000, step=1000 # 最小值、最大值、默认值、步长
 )
 
+adx_threshold = st.sidebar.number_input(
+    "ADX 阈值 (ADX Threshold)", # ADX阈值输入框标签
+    min_value=0, max_value=50, value=25, step=1, # 最小值、最大值、默认值、步长
+    help="""ADX (Average Directional Index) 阈值。当ADX低于此值时，策略不进行交易，以避免盘整市场。
+          (ADX threshold. Strategy avoids trading in sideways markets when ADX is below this value.)"""
+)
+
 # --- Main Content (主内容区域) ---
 st.title("📈 量化交易回测平台") # 页面主标题
 st.caption("Quantitative Trading Backtest Platform") # 页面副标题
@@ -220,7 +106,7 @@ if st.sidebar.button("🚀 运行回测 (Run Backtest)"):
                 # 2. Generate Signals (with LLM) (生成交易信号 (包含LLM))
                 st.write(f"**2. 生成交易信号 (Generating Signals)...**") # 提示用户正在生成信号
                 # Note: Sentiment analysis logs will print to the console where streamlit is running (注意: 情感分析日志会打印到Streamlit运行的控制台)
-                signals_data = generate_signals(stock_data, short_window=short_window, long_window=long_window) # 调用函数生成交易信号
+                signals_data = generate_signals(stock_data, short_window=short_window, long_window=long_window, adx_threshold=adx_threshold) # 调用函数生成交易信号
                 st.success("交易信号生成完毕。(Trading signals generated.)") # 显示成功信息
                 
                 # 3. Run Backtest (执行回测模拟)
@@ -247,10 +133,29 @@ if st.sidebar.button("🚀 运行回测 (Run Backtest)"):
                 fig = plot_results(portfolio, signals_data, ticker, company_name) # 调用绘图函数生成图表
                 st.pyplot(fig) # 在Streamlit应用中显示Matplotlib图表
 
-                # 5. Save the report (保存报告)
-                st.write(f"**4. 保存回测报告 (Saving Backtest Report)...**") # 提示用户正在保存报告
-                report_path = save_report_to_html(stats, fig, ticker, company_name) # 调用函数保存报告到HTML文件
-                st.success(f"回测报告已保存至: (Report saved to:) `{report_path}`") # 显示报告保存路径
+                # 5. Save the report to the database (保存报告到数据库)
+                st.write(f"**5. 保存回测报告 (Saving Backtest Report)...**")
+                
+                # Convert plot to a base64 string for DB storage
+                buf = io.BytesIO()
+                fig.savefig(buf, format='png', bbox_inches='tight')
+                chart_image_str = base64.b64encode(buf.getvalue()).decode()
+                
+                # Gather strategy parameters into a dictionary
+                strategy_params = {
+                    "short_window": short_window,
+                    "long_window": long_window,
+                    "adx_threshold": adx_threshold,
+                    "start_date": str(start_date),
+                    "end_date": str(end_date),
+                    "initial_capital": initial_capital
+                }
+                
+                # The 'stats' dictionary is already our performance metrics dict
+                
+                # Save the complete report to the database
+                save_report_to_db(ticker, company_name, strategy_params, stats, chart_image_str)
+                st.success(f"回测报告已成功保存至数据库。(Report successfully saved to database.)")
 
 else:
     st.info("请在左侧配置参数并点击 '运行回测'。(Please configure the parameters on the left and click 'Run Backtest'.)") # 默认提示信息，指导用户操作

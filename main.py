@@ -131,6 +131,7 @@ def main():
     END_DATE = '2023-01-01'    # 回测结束日期
     SHORT_WINDOW = 40        # 短期移动平均线的计算窗口(天数)
     LONG_WINDOW = 100        # 长期移动平均线的计算窗口(天数)
+    ADX_THRESHOLD = 25       # ADX 指标的阈值，低于此值不进行交易
     INITIAL_CAPITAL = 100000.0 # 初始模拟资金 (10万美元), 最后的 .0 表示这是一个浮点数
 
     # --- 执行流程 ---
@@ -148,7 +149,7 @@ def main():
     # 2. 生成信号
     # 调用我们从 strategies.sma_crossover 模块导入的 generate_signals 函数
     # 第一个参数是上一步获取的股票数据, 后面的参数是均线窗口配置
-    signals_data = generate_signals(stock_data, short_window=SHORT_WINDOW, long_window=LONG_WINDOW)
+    signals_data = generate_signals(stock_data, short_window=SHORT_WINDOW, long_window=LONG_WINDOW, adx_threshold=ADX_THRESHOLD)
     print(f"Signals generated, data rows: {len(signals_data)}") # Debug info
 
     # 3. 运行回测
